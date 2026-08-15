@@ -14,8 +14,13 @@ Nmap → galeri SQL injection → credentials → SSH → sudo ht → sudoers d�
 
 ## 1. Keşif (Enumeration)
 
+1.
 ```bash
-nmap -sV -O <hedef-ip>
+nmap -T4 -p- <hedef ip>
+```
+2
+```bash
+nmap -T4 -A -p<acik portlar> <hedef ip>
 ```
 
 Açık portlar:
