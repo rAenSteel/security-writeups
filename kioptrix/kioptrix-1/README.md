@@ -15,9 +15,13 @@ Nmap → eski mod_ssl/OpenSSL tespiti → OpenFuck exploiti → apache shell →
 ## 1. Keşif (Enumeration)
 
 Nmap ile tam port + servis versiyon taraması yaptım:
-
+1.
 ```bash
-nmap -sV -O -p- <hedef-ip>
+nmap -T4 -p- <hedef ip>
+```
+2
+```bash
+nmap -T4 -A -p<acik portlar> <hedef ip>
 ```
 
 Öne çıkan portlar:
