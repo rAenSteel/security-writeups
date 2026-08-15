@@ -15,8 +15,13 @@ Nmap → login ekranında SQL injection → command injection (pingit.php)
 
 ## 1. Keşif (Enumeration)
 
+1.
 ```bash
-nmap -sV -O -p- <hedef-ip>
+nmap -T4 -p- <hedef ip>
+```
+2
+```bash
+nmap -T4 -A -p<acik portlar> <hedef ip>
 ```
 
 Açık portlar:
