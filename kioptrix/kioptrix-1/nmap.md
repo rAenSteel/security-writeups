@@ -1,4 +1,4 @@
-# Kioptrix Level 1 — Nmap Ham Çıktı
+# Kioptrix Level 1: raw Nmap output
 
 ```
 PORT      STATE SERVICE     VERSION
@@ -27,7 +27,7 @@ PORT      STATE SERVICE     VERSION
 |_Not valid after:  2010-09-26T09:32:06
 | sslv2:
 |   SSLv2 supported
-|_    (birden fazla zayıf cipher)
+|_    (multiple weak ciphers)
 32768/tcp open  status      1 (RPC #100024)
 
 Running: Linux 2.4.X

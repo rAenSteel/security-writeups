@@ -1,76 +1,76 @@
 # Kioptrix Level 1
 
-**Zorluk:** Kolay
-**Hedef İşletim Sistemi:** Red Hat Linux (kernel 2.4.x)
-**Sonuç:** Root alındı ✅
+**Difficulty:** Easy
+**Target OS:** Red Hat Linux (kernel 2.4.x)
+**Result:** Root ✅
 
-Saldırı zinciri:
+Attack chain:
 
 ```
-Nmap → eski mod_ssl/OpenSSL tespiti → OpenFuck exploiti → apache shell → local privesc → root
+Nmap → outdated mod_ssl/OpenSSL found → OpenFuck exploit → apache shell → local privesc → root
 ```
 
 ---
 
-## 1. Keşif (Enumeration)
+## 1. Enumeration
 
-Nmap ile tam port + servis versiyon taraması yaptım:
+I ran a full port scan, then a service and version scan on the open ports:
 1.
 ```bash
-nmap -T4 -p- <hedef ip>
+nmap -T4 -p- <target ip>
 ```
-2
+2.
 ```bash
-nmap -T4 -A -p<acik portlar> <hedef ip>
+nmap -T4 -A -p<open ports> <target ip>
 ```
 
-Öne çıkan portlar:
+Notable ports ([raw output](nmap.md)):
 
-| Port | Servis | Versiyon |
-| ---- | ------ | -------- |
+| Port | Service | Version |
+| ---- | ------- | ------- |
 | 22 | SSH | OpenSSH 2.9p2 (protocol 1.99) |
 | 80 | HTTP | Apache 1.3.20 + mod_ssl 2.8.4 + OpenSSL 0.9.6b |
 | 111 | rpcbind | RPC #100000 |
 | 139 | netbios-ssn | Samba (workgroup MYGROUP) |
-| 443 | HTTPS | Apache 1.3.20 + mod_ssl 2.8.4 (SSLv2 destekli) |
+| 443 | HTTPS | Apache 1.3.20 + mod_ssl 2.8.4 (SSLv2 supported) |
 
-Sistem son derece eski: Apache 1.3.20, OpenSSL 0.9.6b, kernel 2.4.x. Bu versiyonlar 2001-2002 civarına ait, yani bilinen public exploitler için birinci sınıf hedef.
+The system is very old: Apache 1.3.20, OpenSSL 0.9.6b, kernel 2.4.x. These versions date from around 2001–2002, which makes the box a prime target for known public exploits.
 
-İki potansiyel yol göze çarptı:
-- **mod_ssl 2.8.4 / OpenSSL 0.9.6b** → bilinen bir buffer overflow zafiyeti
-- **Samba** → eski sürümlerde başka zafiyetler olabilir (ilk yolu denedim, çalıştı)
+Two possible paths stood out:
+- **mod_ssl 2.8.4 / OpenSSL 0.9.6b** → a known buffer overflow
+- **Samba** → old versions have other vulnerabilities (I tried the first path and it worked)
 
-## 2. Zafiyet Araştırması
+## 2. Vulnerability research
 
-`searchsploit` ile Apache/mod_ssl aradım:
+I searched for Apache/mod_ssl with `searchsploit`:
 
 ```bash
 searchsploit apache mod_ssl
 ```
 
-Sonuçta klasik **OpenFuck / OpenFuckV2** exploitleri çıktı:
+The results included the classic **OpenFuck / OpenFuckV2** exploits:
 
 ```
 Apache mod_ssl < 2.8.7 OpenSSL - 'OpenFuck.c' Remote Buffer Overflow      | unix/remote/21671.c
 Apache mod_ssl < 2.8.7 OpenSSL - 'OpenFuckV2.c' Remote Buffer Overflow    | unix/remote/764.c / 47080.c
 ```
 
-Bu, **CVE-2002-0082** — mod_ssl'deki bir heap overflow. Hedefteki mod_ssl 2.8.4, açık aralık olan `< 2.8.7`'nin içinde, yani uygun.
+This is **CVE-2002-0082**, a heap overflow in mod_ssl. The target's mod_ssl 2.8.4 falls inside the vulnerable range `< 2.8.7`.
 
-## 3. Exploit (Initial Access + Root)
+## 3. Exploitation (initial access + root)
 
-OpenFuck exploitini kullanarak mod_ssl üzerinden apache kullanıcısı olarak uzaktan kod çalıştırma sağladım. Exploit'in kendisi bağlantı kurduktan sonra local privilege escalation da içeriyordu, böylece doğrudan root'a ulaştım.
+The OpenFuck exploit gave me remote code execution through mod_ssl as the apache user. After connecting, the exploit also runs a local privilege escalation, so it took me straight to root.
 
-> Not: Bu exploit modern GCC ile derlenirken hata verir; eski `-lcrypto` bağlama ve bazı header düzeltmeleri gerekir. Ayrıca exploit hedefin tam Apache sürümüne karşılık gelen bir "magic number" seçimi ister.
+> Note: This exploit fails to compile with a modern GCC; it needs the old `-lcrypto` linking and some header fixes. It also asks for a "magic number" that matches the target's exact Apache version.
 
-## 4. Öğrenilen Kavramlar
+## 4. Concepts learned
 
-- Servis versiyon banner'larının (Apache 1.3.20, mod_ssl 2.8.4) doğrudan CVE eşlemesine nasıl gittiği
-- `searchsploit` ile versiyon aralığı eşleştirme (`< 2.8.7` gibi)
-- Eski C exploitlerinin modern sistemde derlenme sorunları
-- mod_ssl / OpenSSL buffer overflow mantığı (CVE-2002-0082)
+- How service version banners (Apache 1.3.20, mod_ssl 2.8.4) map directly to CVEs
+- Matching version ranges such as `< 2.8.7` with `searchsploit`
+- Compilation problems of old C exploits on modern systems
+- How the mod_ssl / OpenSSL buffer overflow works (CVE-2002-0082)
 
-## 5. Bir Dahaki Sefere / Notlar
+## 5. Next time / notes
 
-- Bu box'ta Samba yolunu hiç denemedim — alternatif bir vektör olarak (trans2open gibi) ayrıca çalışılabilir.
-- OpenFuck exploitini "kör" çalıştırmak yerine, hedef mimarisine (Red Hat + Apache 1.3.20) uygun magic number'ı önceden belirlemek deneme sayısını azaltıyor.
+- I never tried the Samba path on this box. It is worth studying separately as an alternative vector (for example trans2open).
+- Instead of running OpenFuck blindly, picking the magic number for the target platform (Red Hat + Apache 1.3.20) in advance cuts down the number of attempts.

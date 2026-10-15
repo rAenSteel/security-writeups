@@ -1,4 +1,4 @@
-# Kioptrix Level 2 — Nmap Ham Çıktı
+# Kioptrix Level 2: raw Nmap output
 
 ```
 PORT     STATE SERVICE  VERSION
@@ -13,7 +13,7 @@ PORT     STATE SERVICE  VERSION
 |   100000  2            111/tcp   rpcbind
 |   100024  1            858/tcp   status
 443/tcp  open  ssl/http Apache httpd 2.0.52 ((CentOS))
-|   sslv2: SSLv2 supported (zayıf cipher'lar)
+|   sslv2: SSLv2 supported (weak ciphers)
 |_http-server-header: Apache/2.0.52 (CentOS)
 631/tcp  open  ipp      CUPS 1.1
 | http-methods:
@@ -26,12 +26,12 @@ Running: Linux 2.6.X
 OS details: Linux 2.6.9 - 2.6.30
 ```
 
-## Dizin Taraması (ffuf)
+## Directory scan (ffuf)
 
 ```
 http://<hedef>/icons/README
 http://<hedef>/icons/
-http://<hedef>/pingit.php     <-- command injection buradaydı
+http://<hedef>/pingit.php     <-- the command injection was here
 http://<hedef>/manual/
 http://<hedef>/index.php
 ```

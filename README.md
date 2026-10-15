@@ -1,26 +1,26 @@
 # Security Write-ups
 
-Kendi kurduğum penetrasyon testi lab'ında (KVM/libvirt üzerinde Kali attacker + hedef VM'ler) çözdüğüm makinelerin write-up'ları.
+Write-ups of machines I solved in my own penetration testing lab (a Kali attacker and target VMs on KVM/libvirt).
 
-Amaç: sadece "flag'i aldım" değil, **hangi yolu neden seçtim, neyi yanlış yaptım, ne öğrendim** kaydını tutmak. Başarısız denemeler de bilinçli olarak yazıldı — çünkü asıl öğrenme orada.
+The goal is not only to record that I got the flag, but **which path I chose and why, what I got wrong and what I learned**. Failed attempts are written down on purpose, because that is where most of the learning happened.
 
-## Lab Ortamı
+## Lab environment
 
-- **Host:** CachyOS (Arch tabanlı)
-- **Sanallaştırma:** KVM / QEMU / libvirt
-- **Attacker:** Kali Linux (izole `virbr` network)
-- **Hedefler:** Kioptrix serisi, Metasploitable2 (izole, internete kapalı)
+- **Host:** CachyOS (Arch-based)
+- **Virtualization:** KVM / QEMU / libvirt
+- **Attacker:** Kali Linux (isolated `virbr` network)
+- **Targets:** Kioptrix series, Metasploitable 2 (isolated, no internet access)
 
-## İçindekiler
+## Contents
 
-### Kioptrix Serisi
+### Kioptrix series
 
-| Makine | OS | Ana Vektör | Privesc |
-| ------ | -- | ---------- | ------- |
-| [Kioptrix Level 1](kioptrix/kioptrix-1/) | Red Hat (2.4.x) | mod_ssl OpenFuck (CVE-2002-0082) | exploit içinde |
-| [Kioptrix Level 2](kioptrix/kioptrix-2/) | CentOS 4.5 | SQLi + command injection | kernel sock_sendpage (CVE-2009-2698) |
-| [Kioptrix Level 3](kioptrix/kioptrix-3/) | Ubuntu (2.6.x) | galeri SQL injection | sudo + ht editörü |
+| Machine | OS | Initial access | Privilege escalation |
+| ------- | -- | -------------- | -------------------- |
+| [Kioptrix Level 1](kioptrix/kioptrix-1/) | Red Hat (kernel 2.4.x) | mod_ssl "OpenFuck" remote exploit (CVE-2002-0082) | Built into the exploit |
+| [Kioptrix Level 2](kioptrix/kioptrix-2/) | CentOS 4.5 | SQL injection login bypass + OS command injection | Kernel `ip_append_data()` exploit, exploit-db 9542 (CVE-2009-2698) |
+| [Kioptrix Level 3](kioptrix/kioptrix-3/) | Ubuntu (kernel 2.6.x) | SQL injection in the photo gallery | `sudo` rights on the `ht` editor |
 
-## Not
+## Note
 
-Tüm testler kendi izole lab ortamımda, sahibi olduğum/izinli VM'ler üzerinde yapılmıştır. Buradaki içerik eğitim amaçlıdır.
+All testing was done in my own isolated lab, against VMs I own or am permitted to test. The content here is for educational purposes.

